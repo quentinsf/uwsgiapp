@@ -11,7 +11,7 @@ automatically as their \*.ini configuration files are created, deleted or update
 This is great for automated management of multiple processes. If you want to manage things by hand, though, it's a bit inconvenient to keep adding and removing files.
 
 This utility assumes that you've created a directory structure analagous to the 'sites-enabled' and 'sites-available'
-model often used by Apache and nginx installations, where you manipulate sumbolic links instead of the original files.  
+model often used by Apache and nginx installations, where you manipulate symbolic links instead of the original files.  
 
 In our case, you'll have all your app-specific uWSGI INI files in a directory called *apps-available*.  When you want uWSGI to be running them, you create symlinks to them in a directory called *apps-enabled*.
 
