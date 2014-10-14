@@ -1,0 +1,112 @@
+#! /usr/bin/env python
+#
+# uwsgiapp
+#
+# Convenience utility for stopping & starting apps controlled by uwsgi emperor mode.
+# NOTE: this assumes they are arranged as an apps-enabled directory with symlinks to
+# an apps-available directory.
+#
+# Quentin Stafford-Fraser, Telemarq Ltd, 2014
+
+import argparse
+import sys
+import os
+import glob
+
+APPS_AVAILABLE_DIR='/etc/uwsgi/apps-available'
+APPS_ENABLED_DIR='/etc/uwsgi/apps-enabled'
+
+def app_list(dir):
+    apps = [os.path.splitext(os.path.basename(f))[0] for f in glob.glob("{p}/*.ini".format(p=dir))]
+    return apps
+
+def app_enabled_inifile(app):
+    return "{p}/{a}.ini".format(p=APPS_ENABLED_DIR, a=app)
+
+def app_available_inifile(app):
+    return "{p}/{a}.ini".format(p=APPS_AVAILABLE_DIR, a=app)
+
+def start_app(app):
+    """ Create symlink for app"""
+
+    # We don't overwrite existing configs
+    en_ini = app_enabled_inifile(app)
+    if os.path.exists(en_ini):
+        print >>sys.stderr, "Already running."
+        print >>sys.stderr, "(An ini file already exists at {i})".format(i=en_ini)
+        sys.exit(1)
+
+    # This test shouldn't be needed because we check the app name first
+    # but just in case.
+    av_ini = app_available_inifile(app)
+    if not os.path.exists(av_ini):
+        print >>sys.stderr, "App not available."
+        print >>sys.stderr, "(No ini file found at {i})".format(i=av_ini)
+        sys.exit(1)
+
+    # Now make the link
+    os.symlink(av_ini, en_ini)
+
+
+def stop_app(app):
+    """ Remove symlink for app"""
+    en_ini = app_enabled_inifile(app)
+    if not os.path.exists(en_ini):
+        print >>sys.stderr, "Not running."
+        print >>sys.stderr, "(No ini file found at {i})".format(i=en_ini)        
+        sys.exit(1)
+
+    # Remove the link
+    os.remove(en_ini)
+
+
+def restart_app(app):
+    """ Touch symlink for app"""
+    en_ini = app_enabled_inifile(app)
+    if not os.path.exists(en_ini):
+        print >>sys.stderr, "That app does not appear to be enabled"
+        sys.exit(1)
+
+    # Touch the file
+    os.utime(en_ini, None)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("command", help='start, stop or restart')
+    parser.add_argument("app", help='name of app')
+    args = parser.parse_args()
+
+    if not os.path.exists(APPS_AVAILABLE_DIR):
+        print >>sys.stderr, "To use this utility, directories {a} and {b} must both exist.".format(
+            a=APPS_AVAILABLE_DIR, b=APPS_ENABLED_DIR)
+        sys.exit(3)
+
+    apps = set(app_list(APPS_AVAILABLE_DIR)) | set(app_list(APPS_ENABLED_DIR))
+    if args.app not in apps:
+        print >>sys.stderr, "'{a}' is not a valid app name - can't find a .ini file".format(a=args.app)
+        print >>sys.stderr, "Valid apps are: " + u", ".join(apps)
+        sys.exit(1)
+
+    try:
+        if args.command == 'start':
+            start_app(args.app)
+
+        elif args.command == 'stop':
+            stop_app(args.app)
+
+        elif args.command == 'restart':
+            restart_app(args.app)
+
+        else:
+            print >>sys.stderr, "Command should be start, stop, or restart"
+            sys.exit(1)
+    
+    except OSError, e:
+        if e.errno == 13:
+            print >>sys.stderr, "Failed - do you have sufficient permissions?"
+            sys.exit(2)
+        raise
+
+if __name__ == '__main__':
+    main()
