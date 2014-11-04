@@ -20,14 +20,28 @@ def app_list(dir):
     apps = [os.path.splitext(os.path.basename(f))[0] for f in glob.glob("{p}/*.ini".format(p=dir))]
     return apps
 
+def full_app_list():
+    """ Return all apps, whether or not enabled """
+    return set(app_list(APPS_AVAILABLE_DIR)) | set(app_list(APPS_ENABLED_DIR))
+
 def app_enabled_inifile(app):
     return "{p}/{a}.ini".format(p=APPS_ENABLED_DIR, a=app)
 
 def app_available_inifile(app):
     return "{p}/{a}.ini".format(p=APPS_AVAILABLE_DIR, a=app)
 
-def start_app(app):
+def check_app(app):
+    apps = full_app_list()
+    if app not in apps:
+        print >>sys.stderr, "'{a}' is not a valid app name - can't find a .ini file".format(a=app)
+        print >>sys.stderr, "Valid apps are: " + u", ".join(apps)
+        sys.exit(1)
+
+def start_app(args):
     """ Create symlink for app"""
+
+    app = args.app
+    check_app(app)
 
     # We don't overwrite existing configs
     en_ini = app_enabled_inifile(app)
@@ -48,8 +62,11 @@ def start_app(app):
     os.symlink(av_ini, en_ini)
 
 
-def stop_app(app):
+def stop_app(args):
     """ Remove symlink for app"""
+    app = args.app
+    check_app(app)
+
     en_ini = app_enabled_inifile(app)
     if not os.path.exists(en_ini):
         print >>sys.stderr, "Not running."
@@ -60,8 +77,11 @@ def stop_app(app):
     os.remove(en_ini)
 
 
-def restart_app(app):
+def restart_app(args):
     """ Touch symlink for app"""
+    app=args.app
+    check_app(app)
+
     en_ini = app_enabled_inifile(app)
     if not os.path.exists(en_ini):
         print >>sys.stderr, "That app does not appear to be enabled"
@@ -70,37 +90,43 @@ def restart_app(app):
     # Touch the file
     os.utime(en_ini, None)
 
+def list_apps(args):
+    """ List apps"""
+    for a in full_app_list():
+        print a
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("command", help='start, stop or restart')
-    parser.add_argument("app", help='name of app')
-    args = parser.parse_args()
+
+    # First, check if we can do anything useful
 
     if not os.path.exists(APPS_AVAILABLE_DIR):
         print >>sys.stderr, "To use this utility, directories {a} and {b} must both exist.".format(
             a=APPS_AVAILABLE_DIR, b=APPS_ENABLED_DIR)
         sys.exit(3)
 
-    apps = set(app_list(APPS_AVAILABLE_DIR)) | set(app_list(APPS_ENABLED_DIR))
-    if args.app not in apps:
-        print >>sys.stderr, "'{a}' is not a valid app name - can't find a .ini file".format(a=args.app)
-        print >>sys.stderr, "Valid apps are: " + u", ".join(apps)
-        sys.exit(1)
+    # Then read the arguments
 
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(title='commands', help='run with -h for syntax')
+
+    parser_start=subparsers.add_parser("start", help='start an app')
+    parser_start.add_argument("app", help='name of app')
+    parser_start.set_defaults(func=start_app)
+
+    parser_stop=subparsers.add_parser("stop", help='stop an app')
+    parser_stop.add_argument("app", help='name of app')
+    parser_stop.set_defaults(func=start_app)
+
+    parser_restart=subparsers.add_parser("restart", help='restart an app')
+    parser_restart.add_argument("app", help='name of app')
+    parser_restart.set_defaults(func=restart_app)
+
+    parser_list=subparsers.add_parser("list", help='list available apps')
+    parser_list.set_defaults(func=list_apps)
+    
     try:
-        if args.command == 'start':
-            start_app(args.app)
-
-        elif args.command == 'stop':
-            stop_app(args.app)
-
-        elif args.command == 'restart':
-            restart_app(args.app)
-
-        else:
-            print >>sys.stderr, "Command should be start, stop, or restart"
-            sys.exit(1)
+        args = parser.parse_args()
+        args.func(args)
     
     except OSError, e:
         if e.errno == 13:
