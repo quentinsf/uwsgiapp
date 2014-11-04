@@ -31,6 +31,8 @@ Now, the `uwsgiapp` script just makes this a bit easier, giving you handy comman
 
     uwsgiapp restart myapp
 
+    uwsgiapp list
+
 ## Installation
 
 Just download the script, make sure it's executable with
