@@ -115,7 +115,7 @@ def main():
 
     parser_stop=subparsers.add_parser("stop", help='stop an app')
     parser_stop.add_argument("app", help='name of app')
-    parser_stop.set_defaults(func=start_app)
+    parser_stop.set_defaults(func=stop_app)
 
     parser_restart=subparsers.add_parser("restart", help='restart an app')
     parser_restart.add_argument("app", help='name of app')
