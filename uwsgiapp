@@ -77,6 +77,33 @@ def stop_app(args):
     os.remove(en_ini)
 
 
+def status_app(args):
+    """ 
+    What is the status of an app?
+    Prints the app name plus 'enabled', 'disabled' or 'unknown'
+    """
+    app = args.app
+
+    avail_apps = app_list(APPS_AVAILABLE_DIR)
+    enabled_apps = app_list(APPS_ENABLED_DIR)
+
+    if (app in avail_apps and app in enabled_apps):
+        print '{a} enabled'.format(a=app)
+
+    elif (app in avail_apps):
+        print '{a} disabled'.format(a=app)
+
+    elif (app in enabled_apps):
+        print >>sys.stderr, "WARNING: Link in {e} without target in {a}".format(
+            e = app_enabled_inifile(app),
+            a = app_available_inifile(app))
+        print '{a} disabled'.format(a=app)
+        sys.exit(1)
+
+    else:
+        print '{a} unknown'.format(a=app)
+
+
 def restart_app(args):
     """ Touch symlink for app"""
     app=args.app
@@ -89,6 +116,7 @@ def restart_app(args):
 
     # Touch the file
     os.utime(en_ini, None)
+
 
 def list_apps(args):
     """ List apps"""
@@ -124,6 +152,10 @@ def main():
     parser_list=subparsers.add_parser("list", help='list available apps')
     parser_list.set_defaults(func=list_apps)
     
+    parser_status=subparsers.add_parser("status", help='status of an app')
+    parser_status.add_argument("app", help='name of app')
+    parser_status.set_defaults(func=status_app)
+
     try:
         args = parser.parse_args()
         args.func(args)

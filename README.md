@@ -33,6 +33,10 @@ Now, the `uwsgiapp` script just makes this a bit easier, giving you handy comman
 
     uwsgiapp list
 
+    uwsgiapp status myapp
+
+Note that the 'status' command just tells you about the presence or absence of links, not whether or not uWSGI is actually running them.
+
 ## Installation
 
 Just download the script, make sure it's executable with
